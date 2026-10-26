@@ -50,19 +50,23 @@
   const LANES = 3;
   const LANE_WIDTH = canvas.width / LANES;
   
-  // ДЕЛАЕМ ЕГО БОЛЬШИМ!
-  const PLAYER_HEIGHT = 160; // Огромный!
-  const PLAYER_WIDTH = PLAYER_HEIGHT * (1042 / 1563); // Сохраняем пропорции
-  const PLAYER_Y = canvas.height - PLAYER_HEIGHT / 2 - 10; // Стоит почти в самом низу
+  // Размеры героя
+  const PLAYER_HEIGHT = 160; 
+  const PLAYER_WIDTH = PLAYER_HEIGHT * (1042 / 1563); 
+  const PLAYER_Y = canvas.height - PLAYER_HEIGHT / 2 - 10; 
   
-  const ITEM_SIZE = 40; // Мусор тоже увеличили
+  const ITEM_SIZE = 40; 
 
   // ===== ЗАГРУЗКА КАРТИНОК =====
-  const heroImg = new Image();
-  heroImg.src = 'Проект (20261026122800).png'; 
+  const heroBase = new Image();
+  heroBase.src = 'Проект (20261026122800).png'; 
+  
+  const heroHappy = new Image();
+  heroHappy.src = 'Проект (20261026050007).png';
 
-  let heroLoaded = false;
-  heroImg.onload = () => { heroLoaded = true; };
+  let heroLoaded = false, happyLoaded = false;
+  heroBase.onload = () => { heroLoaded = true; };
+  heroHappy.onload = () => { happyLoaded = true; };
 
   // ===== СОСТОЯНИЕ ИГРЫ =====
   let playerLane = 1;
@@ -72,6 +76,10 @@
   let running = false;
   let gameOver = false;
   let spawnInterval = null;
+  
+  // Таймер для анимации радости
+  let happyTimer = 0; 
+
   let record = parseInt(localStorage.getItem('intelligrentibleRecord') || '0', 10);
   recordText.textContent = record;
 
@@ -98,6 +106,7 @@
     items = [];
     running = true;
     gameOver = false;
+    happyTimer = 0;
     updateHUD();
     messageEl.textContent = 'Ловите мусор!';
     
@@ -124,6 +133,9 @@
 
   function update() {
     if (gameOver) return;
+    
+    // Уменьшаем таймер радости
+    if (happyTimer > 0) happyTimer--;
 
     for (let i = items.length - 1; i >= 0; i--) {
       const item = items[i];
@@ -139,6 +151,9 @@
         score += 10;
         updateHUD();
         items.splice(i, 1);
+        
+        // Включаем анимацию радости на 20 кадров (~0.3 сек)
+        happyTimer = 20; 
         continue;
       }
 
@@ -185,11 +200,14 @@
 
     // ГЕРОЙ
     const px = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
-    if (heroLoaded) {
-      // Рисуем огромного героя
-      ctx.drawImage(heroImg, px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
+    
+    // Если таймер радости активен и картинка загружена - рисуем её
+    if (happyTimer > 0 && happyLoaded) {
+      ctx.drawImage(heroHappy, px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
+    } else if (heroLoaded) {
+      ctx.drawImage(heroBase, px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
     } else {
-      // Если не загрузилось - квадрат (тоже огромный)
+      // Заглушка
       ctx.fillStyle = '#3aa0a0';
       ctx.fillRect(px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
     }
