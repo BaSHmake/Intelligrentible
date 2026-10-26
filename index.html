@@ -49,16 +49,17 @@
 
   const LANES = 3;
   const LANE_WIDTH = canvas.width / LANES;
-  const PLAYER_Y = canvas.height - 60; 
   
-  // Новые настройки размера (высота фиксирована, ширина подстроится)
-  const PLAYER_HEIGHT = 90; 
-  const PLAYER_WIDTH = PLAYER_HEIGHT * (1042 / 1563); // Высчитываем идеальную ширину
-  const ITEM_SIZE = 35; // Чуть увеличили мусор, чтобы было видно
+  // ДЕЛАЕМ ЕГО БОЛЬШИМ!
+  const PLAYER_HEIGHT = 160; // Огромный!
+  const PLAYER_WIDTH = PLAYER_HEIGHT * (1042 / 1563); // Сохраняем пропорции
+  const PLAYER_Y = canvas.height - PLAYER_HEIGHT / 2 - 10; // Стоит почти в самом низу
+  
+  const ITEM_SIZE = 40; // Мусор тоже увеличили
 
   // ===== ЗАГРУЗКА КАРТИНОК =====
   const heroImg = new Image();
-  heroImg.src = 'Проект (20261026122800).png'; // Твоя картинка
+  heroImg.src = 'Проект (20261026122800).png'; 
 
   let heroLoaded = false;
   heroImg.onload = () => { heroLoaded = true; };
@@ -131,7 +132,7 @@
       const itemX = item.lane * LANE_WIDTH + LANE_WIDTH / 2;
       const playerX = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
 
-      // Проверка ловли (зона чуть шире из-за размера героя)
+      // Проверка ловли
       if (item.y + ITEM_SIZE >= PLAYER_Y - PLAYER_HEIGHT / 2 && item.y <= PLAYER_Y + PLAYER_HEIGHT / 2 &&
           Math.abs(itemX - playerX) < LANE_WIDTH * 0.4) {
         
@@ -175,7 +176,7 @@
       ctx.stroke();
     }
 
-    // Мусор (пока кружочки)
+    // Мусор
     items.forEach(item => {
       const x = item.lane * LANE_WIDTH + LANE_WIDTH / 2 - ITEM_SIZE / 2;
       ctx.fillStyle = '#888';
@@ -185,10 +186,10 @@
     // ГЕРОЙ
     const px = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
     if (heroLoaded) {
-      // Отрисовка с сохранением пропорций (по центру)
+      // Рисуем огромного героя
       ctx.drawImage(heroImg, px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
     } else {
-      // Если не загрузилось - квадрат
+      // Если не загрузилось - квадрат (тоже огромный)
       ctx.fillStyle = '#3aa0a0';
       ctx.fillRect(px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
     }
