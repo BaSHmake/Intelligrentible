@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Intelligrentible</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center;
+    background: #111; font-family: 'Courier New', monospace; color: #fff; padding: 10px;
+  }
+  .game-container {
+    background: #222; padding: 15px; border-radius: 12px;
+    box-shadow: 0 0 40px rgba(0,255,0,0.1); text-align: center;
+    width: 100%; max-width: 440px; position: relative;
+  }
+  canvas { display: block; margin: 0 auto; background: #1a1a1a; border: 2px solid #444; border-radius: 8px; touch-action: none; width: 100%; max-width: 400px; height: auto; }
+  .hud { display: flex; justify-content: space-between; align-items: center; padding: 10px 4px; font-size: 16px; letter-spacing: 1px; }
+  .lives span { color: #ff4444; font-size: 20px; margin-right: 2px; }
+  button { background: #2a5a2a; color: #fff; border: 2px solid #4a4; padding: 10px 20px; font-family: inherit; font-size: 16px; border-radius: 8px; cursor: pointer; margin-top: 10px; }
+  button:active { transform: scale(0.97); }
+  .msg { margin-top: 10px; font-size: 14px; color: #ccc; min-height: 20px; }
+  .record { margin-top: 6px; font-size: 13px; color: #ffd700; }
+</style>
+</head>
+<body>
+<div class="game-container">
+  <div class="hud">
+    <div class="lives"><span>❤</span><span id="livesDisplay">❤❤❤</span></div>
+    <div>Очки: <span id="scoreDisplay">0</span></div>
+  </div>
+
+  <canvas id="gameCanvas" width="400" height="500"></canvas>
+
+  <div class="msg" id="message">Нажмите «Начать»</div>
+  <div class="record" id="recordText">🏆 Рекорд: 0</div>
+
+  <button id="startBtn">Начать / Заново</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const livesDisplay = document.getElementById('livesDisplay');
+  const scoreDisplay = document.getElementById('scoreDisplay');
+  const recordText = document.getElementById('recordText');
+  const messageEl = document.getElementById('message');
+
+  const LANES = 3;
+  const LANE_WIDTH = canvas.width / LANES;
+  const PLAYER_Y = canvas.height - 80; // Чуть выше, чтобы персонаж влезал
+  
+  // Настройки размеров
+  const PLAYER_W = 60; 
+  const PLAYER_H = 90; // Пропорции твоего персонажа (1042x1563)
+  const ITEM_SIZE = 30;
+
+  // ===== ЗАГРУЗКА КАРТИНОК =====
+  const heroImg = new Image();
+  heroImg.src = 'Проект (20261026122800).png'; // Твоя картинка
+
+  // (Заглушки для мусора, пока ты их не нарисуешь)
+  // Когда нарисуешь, загрузи их в репозиторий и раскомментируй:
+  // const trashImg = new Image(); trashImg.src = 'trash.png';
+  
+  let heroLoaded = false;
+  heroImg.onload = () => { heroLoaded = true; };
+
+  // ===== СОСТОЯНИЕ ИГРЫ =====
+  let playerLane = 1;
+  let lives = 3;
+  let score = 0;
+  let items = [];
+  let running = false;
+  let gameOver = false;
+  let spawnInterval = null;
+  let record = parseInt(localStorage.getItem('intelligrentibleRecord') || '0', 10);
+  recordText.textContent = record;
+
+  // ===== УПРАВЛЕНИЕ =====
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchend', (e) => {
+    if (!running || gameOver) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const rect = canvas.getBoundingClientRect();
+    const tapX = (touchEndX - rect.left) * (canvas.width / rect.width);
+    const tappedLane = Math.floor(tapX / LANE_WIDTH);
+    if (tappedLane >= 0 && tappedLane < LANES) playerLane = tappedLane;
+    e.preventDefault();
+  }, { passive: false });
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+
+  // ===== ИГРА =====
+  function startGame() {
+    if (spawnInterval) clearInterval(spawnInterval);
+    playerLane = 1;
+    lives = 3;
+    score = 0;
+    items = [];
+    running = true;
+    gameOver = false;
+    updateHUD();
+    messageEl.textContent = 'Ловите мусор!';
+    
+    // Спавн предметов каждые 800 мс
+    spawnInterval = setInterval(() => {
+      if (!running || gameOver) return;
+      const lane = Math.floor(Math.random() * LANES);
+      items.push({ lane: lane, y: -ITEM_SIZE, speed: 3 });
+    }, 800);
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  function updateHUD() {
+    livesDisplay.textContent = '❤'.repeat(lives) || '💀';
+    scoreDisplay.textContent = score;
+  }
+
+  function gameLoop() {
+    if (!running) return;
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+  }
+
+  function update() {
+    if (gameOver) return;
+
+    for (let i = items.length - 1; i >= 0; i--) {
+      const item = items[i];
+      item.y += item.speed;
+      
+      const itemX = item.lane * LANE_WIDTH + LANE_WIDTH / 2;
+      const playerX = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
+
+      // Проверка ловли
+      if (item.y + ITEM_SIZE >= PLAYER_Y - PLAYER_H / 2 && item.y <= PLAYER_Y + PLAYER_H / 2 &&
+          Math.abs(itemX - playerX) < LANE_WIDTH * 0.4) {
+        
+        score += 10;
+        updateHUD();
+        items.splice(i, 1);
+        continue;
+      }
+
+      // Пропуск
+      if (item.y > canvas.height) {
+        lives--;
+        updateHUD();
+        items.splice(i, 1);
+        if (lives <= 0) {
+          gameOver = true;
+          running = false;
+          if (spawnInterval) clearInterval(spawnInterval);
+          if (score > record) {
+            record = score;
+            localStorage.setItem('intelligrentibleRecord', record);
+            recordText.textContent = record;
+            messageEl.textContent = `🏆 Новый рекорд: ${score}!`;
+          } else {
+            messageEl.textContent = `💀 Конец! Очки: ${score}.`;
+          }
+          return;
+        }
+      }
+    }
+  }
+
+  function draw() {
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Дорожки
+    for (let i = 0; i <= LANES; i++) {
+      ctx.beginPath(); ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+      ctx.moveTo(i * LANE_WIDTH, 0); ctx.lineTo(i * LANE_WIDTH, canvas.height);
+      ctx.stroke();
+    }
+
+    // Рисуем мусор (пока это просто кружочки, потом заменим на картинки)
+    items.forEach(item => {
+      const x = item.lane * LANE_WIDTH + LANE_WIDTH / 2 - ITEM_SIZE / 2;
+      ctx.fillStyle = '#888'; // Цвет мусора
+      ctx.beginPath(); ctx.arc(x + ITEM_SIZE / 2, item.y + ITEM_SIZE / 2, ITEM_SIZE / 2, 0, Math.PI * 2); ctx.fill();
+      // Если добавишь картинку, замени этот блок на ctx.drawImage(trashImg, x, item.y, ITEM_SIZE, ITEM_SIZE);
+    });
+
+    // Рисуем ГЕРОЯ
+    const px = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
+    if (heroLoaded) {
+      // Отрисовываем картинку по центру дорожки
+      ctx.drawImage(heroImg, px - PLAYER_W / 2, PLAYER_Y - PLAYER_H / 2, PLAYER_W, PLAYER_H);
+    } else {
+      // Если картинка еще грузится, рисуем квадратик
+      ctx.fillStyle = '#3aa0a0';
+      ctx.fillRect(px - PLAYER_W / 2, PLAYER_Y - PLAYER_H / 2, PLAYER_W, PLAYER_H);
+    }
+  }
+
+  // Первичная отрисовка (чтобы экран не был пустым)
+  draw();
+</script>
+</body>
+</html>
