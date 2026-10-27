@@ -50,7 +50,6 @@
   const LANES = 3;
   const LANE_WIDTH = canvas.width / LANES;
   
-  // Размеры героя
   const PLAYER_HEIGHT = 160; 
   const PLAYER_WIDTH = PLAYER_HEIGHT * (1042 / 1563); 
   const PLAYER_Y = canvas.height - PLAYER_HEIGHT / 2 - 10; 
@@ -61,11 +60,15 @@
   const heroBase = new Image();
   heroBase.src = 'Проект (20261026122800).png'; 
   
+  const heroIdle2 = new Image();
+  heroIdle2.src = 'Проект (20261027080835).png';
+  
   const heroHappy = new Image();
   heroHappy.src = 'Проект (20261026050007).png';
 
-  let heroLoaded = false, happyLoaded = false;
+  let heroLoaded = false, idle2Loaded = false, happyLoaded = false;
   heroBase.onload = () => { heroLoaded = true; };
+  heroIdle2.onload = () => { idle2Loaded = true; };
   heroHappy.onload = () => { happyLoaded = true; };
 
   // ===== СОСТОЯНИЕ ИГРЫ =====
@@ -77,8 +80,8 @@
   let gameOver = false;
   let spawnInterval = null;
   
-  // Таймер для анимации радости
   let happyTimer = 0; 
+  let idleTimer = 0; // Таймер для анимации покачивания
 
   let record = parseInt(localStorage.getItem('intelligrentibleRecord') || '0', 10);
   recordText.textContent = record;
@@ -107,6 +110,7 @@
     running = true;
     gameOver = false;
     happyTimer = 0;
+    idleTimer = 0;
     updateHUD();
     messageEl.textContent = 'Ловите мусор!';
     
@@ -134,8 +138,11 @@
   function update() {
     if (gameOver) return;
     
-    // Уменьшаем таймер радости
     if (happyTimer > 0) happyTimer--;
+    
+    // Анимация покачивания (меняем кадр каждые 30 фреймов)
+    idleTimer++;
+    if (idleTimer > 60) idleTimer = 0;
 
     for (let i = items.length - 1; i >= 0; i--) {
       const item = items[i];
@@ -151,8 +158,6 @@
         score += 10;
         updateHUD();
         items.splice(i, 1);
-        
-        // Включаем анимацию радости на 20 кадров (~0.3 сек)
         happyTimer = 20; 
         continue;
       }
@@ -191,7 +196,7 @@
       ctx.stroke();
     }
 
-    // Мусор
+    // Мусор (пока кружочки)
     items.forEach(item => {
       const x = item.lane * LANE_WIDTH + LANE_WIDTH / 2 - ITEM_SIZE / 2;
       ctx.fillStyle = '#888';
@@ -201,13 +206,17 @@
     // ГЕРОЙ
     const px = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
     
-    // Если таймер радости активен и картинка загружена - рисуем её
     if (happyTimer > 0 && happyLoaded) {
+      // Радуется
       ctx.drawImage(heroHappy, px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
+    } else if (idleTimer > 30 && idle2Loaded && heroLoaded) {
+      // Второй кадр анимации (покачивание)
+      ctx.drawImage(heroIdle2, px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
     } else if (heroLoaded) {
+      // Базовый кадр
       ctx.drawImage(heroBase, px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
     } else {
-      // Заглушка
+      // Заглушка, если ничего не загрузилось
       ctx.fillStyle = '#3aa0a0';
       ctx.fillRect(px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
     }
