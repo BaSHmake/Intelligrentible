@@ -66,10 +66,14 @@
   const heroHappy = new Image();
   heroHappy.src = 'Проект (20261026050007).png';
 
-  let heroLoaded = false, idle2Loaded = false, happyLoaded = false;
+  const heroHurt = new Image();
+  heroHurt.src = 'Проект (20261029115742).png';
+
+  let heroLoaded = false, idle2Loaded = false, happyLoaded = false, hurtLoaded = false;
   heroBase.onload = () => { heroLoaded = true; };
   heroIdle2.onload = () => { idle2Loaded = true; };
   heroHappy.onload = () => { happyLoaded = true; };
+  heroHurt.onload = () => { hurtLoaded = true; };
 
   // ===== СОСТОЯНИЕ ИГРЫ =====
   let playerLane = 1;
@@ -81,7 +85,12 @@
   let spawnInterval = null;
   
   let happyTimer = 0; 
-  let idleTimer = 0; // Таймер для анимации покачивания
+  let hurtTimer = 0;
+  let idleTimer = 0; 
+  
+  // Эффекты
+  let shake = 0;
+  let flash = 0;
 
   let record = parseInt(localStorage.getItem('intelligrentibleRecord') || '0', 10);
   recordText.textContent = record;
@@ -110,7 +119,10 @@
     running = true;
     gameOver = false;
     happyTimer = 0;
+    hurtTimer = 0;
     idleTimer = 0;
+    shake = 0;
+    flash = 0;
     updateHUD();
     messageEl.textContent = 'Ловите мусор!';
     
@@ -139,10 +151,15 @@
     if (gameOver) return;
     
     if (happyTimer > 0) happyTimer--;
+    if (hurtTimer > 0) hurtTimer--;
     
-    // Анимация покачивания (меняем кадр каждые 30 фреймов)
+    // Анимация покачивания (если нет других анимаций)
     idleTimer++;
     if (idleTimer > 60) idleTimer = 0;
+
+    // Затухание эффектов
+    if (shake > 0.5) { shake *= 0.85; if (shake < 0.5) shake = 0; }
+    if (flash > 0.01) { flash *= 0.88; if (flash < 0.01) flash = 0; }
 
     for (let i = items.length - 1; i >= 0; i--) {
       const item = items[i];
@@ -159,14 +176,22 @@
         updateHUD();
         items.splice(i, 1);
         happyTimer = 20; 
+        hurtTimer = 0; // Сбрасываем урон, если поймали
         continue;
       }
 
-      // Пропуск
+      // Пропуск (УРОН)
       if (item.y > canvas.height) {
         lives--;
         updateHUD();
         items.splice(i, 1);
+        
+        // Включаем эффекты урона
+        happyTimer = 0;
+        hurtTimer = 30; // 30 кадров = 0.5 сек
+        shake = 15;
+        flash = 0.8;
+
         if (lives <= 0) {
           gameOver = true;
           running = false;
@@ -186,8 +211,14 @@
   }
 
   function draw() {
+    ctx.save(); // Сохраняем контекст для тряски
+    
+    if (shake > 0) {
+      ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    }
+
     ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(-50, -50, canvas.width + 100, canvas.height + 100);
 
     // Дорожки
     for (let i = 0; i <= LANES; i++) {
@@ -196,7 +227,7 @@
       ctx.stroke();
     }
 
-    // Мусор (пока кружочки)
+    // Мусор
     items.forEach(item => {
       const x = item.lane * LANE_WIDTH + LANE_WIDTH / 2 - ITEM_SIZE / 2;
       ctx.fillStyle = '#888';
@@ -206,20 +237,31 @@
     // ГЕРОЙ
     const px = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
     
-    if (happyTimer > 0 && happyLoaded) {
-      // Радуется
+    if (hurtTimer > 0 && hurtLoaded) {
+      // Кадр урона
+      ctx.drawImage(heroHurt, px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
+    } else if (happyTimer > 0 && happyLoaded) {
+      // Кадр радости
       ctx.drawImage(heroHappy, px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
     } else if (idleTimer > 30 && idle2Loaded && heroLoaded) {
-      // Второй кадр анимации (покачивание)
+      // Покачивание
       ctx.drawImage(heroIdle2, px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
     } else if (heroLoaded) {
-      // Базовый кадр
+      // Базовый
       ctx.drawImage(heroBase, px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
     } else {
-      // Заглушка, если ничего не загрузилось
+      // Заглушка
       ctx.fillStyle = '#3aa0a0';
       ctx.fillRect(px - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
     }
+
+    // Красная вспышка
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(255, 0, 0, ${flash})`;
+      ctx.fillRect(-50, -50, canvas.width + 100, canvas.height + 100);
+    }
+
+    ctx.restore();
   }
 
   draw();
