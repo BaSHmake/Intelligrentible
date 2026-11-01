@@ -79,15 +79,19 @@
   heroHappy.onload = () => { happyLoaded = true; };
   heroHurt.onload = () => { hurtLoaded = true; };
 
-  // ===== ЗАГРУЗКА МУСОРА =====
-  const trashImageNames = [
-    'Проект (20261031090037).png', // Шестеренка
-    'Проект (20261101124328).png'  // Банка
+  // ===== ЗАГРУЗКА И НАСТРОЙКА МУСОРА =====
+  // Здесь мы связываем картинку, её название и количество очков за неё
+  const trashData = [
+    { src: 'Проект (20261031090037).png', points: 10 }, // Шестеренка
+    { src: 'Проект (20261101124328).png', points: 6 },  // Банка
+    { src: 'Проект (20261101063546).png', points: 12 } // Радио
   ];
 
   const trashImages = [];
-  trashImageNames.forEach(name => {
-    const img = new Image(); img.src = name; trashImages.push(img);
+  trashData.forEach(data => {
+    const img = new Image(); 
+    img.src = data.src; 
+    trashImages.push(img);
   });
 
   // ===== СОСТОЯНИЕ ИГРЫ =====
@@ -150,12 +154,14 @@
     spawnInterval = setInterval(() => {
       if (!running || gameOver) return;
       const lane = Math.floor(Math.random() * LANES);
-      const randomTrashIndex = Math.floor(Math.random() * trashImages.length);
+      const randomTrashIndex = Math.floor(Math.random() * trashData.length);
+      
       items.push({ 
         lane: lane, 
         y: -ITEM_SIZE, 
         speed: 3.5, 
         imgIndex: randomTrashIndex,
+        points: trashData[randomTrashIndex].points, // <--- ЗАПОМИНАЕМ ОЧКИ ЗА ЭТОТ ПРЕДМЕТ
         rotation: Math.random() * Math.PI * 2,
         rotSpeed: (Math.random() - 0.5) * 0.1
       });
@@ -219,7 +225,9 @@
 
       if (item.y + ITEM_SIZE >= PLAYER_Y - PLAYER_HEIGHT / 2 && item.y <= PLAYER_Y + PLAYER_HEIGHT / 2 &&
           Math.abs(itemX - playerX) < LANE_WIDTH * 0.4) {
-        score += 10;
+        
+        // НАЧИСЛЯЕМ ОЧКИ В ЗАВИСИМОСТИ ОТ МУСОРА
+        score += item.points; 
         updateHUD();
         items.splice(i, 1);
         happyTimer = 20; 
