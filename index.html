@@ -49,12 +49,12 @@
 
   const LANES = 3;
   const LANE_WIDTH = canvas.width / LANES;
-  
+
   const PLAYER_HEIGHT = 160; 
   const PLAYER_WIDTH = PLAYER_HEIGHT * (1042 / 1563); 
   const PLAYER_Y = canvas.height - PLAYER_HEIGHT / 2 - 10; 
-  
-  const ITEM_SIZE = 60; // Увеличили мусор, чтобы детали были видны
+
+  const ITEM_SIZE = 60;
 
   // ===== ЗАГРУЗКА КАРТИНОК ГЕРОЯ =====
   const heroBase = new Image(); heroBase.src = 'Проект (20261026122800).png'; 
@@ -67,7 +67,7 @@
     'Проект (20261029064708).png', 'Проект (20261030014019).png',
     'Проект (20261030015847).png', 'Проект (20261030020518).png'
   ];
-  
+
   const deathImages = [];
   deathFrameNames.forEach(name => {
     const img = new Image(); img.src = name; deathImages.push(img);
@@ -80,11 +80,11 @@
   heroHurt.onload = () => { hurtLoaded = true; };
 
   // ===== ЗАГРУЗКА МУСОРА =====
-  // Сюда потом просто добавим остальные 4 картинки через запятую!
   const trashImageNames = [
-    'Проект (20261031090037).png' // Твоя шестеренка
+    'Проект (20261031090037).png', // Шестеренка
+    'Проект (20261101124328).png'  // Банка
   ];
-  
+
   const trashImages = [];
   trashImageNames.forEach(name => {
     const img = new Image(); img.src = name; trashImages.push(img);
@@ -98,15 +98,15 @@
   let running = false;
   let gameOver = false;
   let spawnInterval = null;
-  
+
   let happyTimer = 0; 
   let hurtTimer = 0;
   let idleTimer = 0; 
-  
+
   let isDying = false;
   let deathFrameIndex = 0;
   let deathFrameTimer = 0;
-  
+
   let shake = 0;
   let flash = 0;
 
@@ -146,19 +146,18 @@
     flash = 0;
     updateHUD();
     messageEl.textContent = 'Ловите мусор!';
-    
+
     spawnInterval = setInterval(() => {
       if (!running || gameOver) return;
       const lane = Math.floor(Math.random() * LANES);
-      // Выбираем случайную картинку мусора из массива
       const randomTrashIndex = Math.floor(Math.random() * trashImages.length);
       items.push({ 
         lane: lane, 
         y: -ITEM_SIZE, 
         speed: 3.5, 
         imgIndex: randomTrashIndex,
-        rotation: Math.random() * Math.PI * 2, // Случайный начальный угол
-        rotSpeed: (Math.random() - 0.5) * 0.1 // Случайная скорость вращения
+        rotation: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.1
       });
     }, 800);
 
@@ -186,7 +185,7 @@
       if (deathFrameTimer > 15) {
         deathFrameTimer = 0;
         deathFrameIndex++;
-        
+
         if (deathFrameIndex >= deathImages.length) {
           isDying = false;
           if (score > record) {
@@ -206,15 +205,15 @@
 
     if (happyTimer > 0) happyTimer--;
     if (hurtTimer > 0) hurtTimer--;
-    
+
     idleTimer++;
     if (idleTimer > 60) idleTimer = 0;
 
     for (let i = items.length - 1; i >= 0; i--) {
       const item = items[i];
       item.y += item.speed;
-      item.rotation += item.rotSpeed; // Вращаем мусор
-      
+      item.rotation += item.rotSpeed;
+
       const itemX = item.lane * LANE_WIDTH + LANE_WIDTH / 2;
       const playerX = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
 
@@ -232,7 +231,7 @@
         lives--;
         updateHUD();
         items.splice(i, 1);
-        
+
         happyTimer = 0;
         hurtTimer = 20; 
         shake = 15;
@@ -263,19 +262,17 @@
       ctx.stroke();
     }
 
-    // РИСУЕМ МУСОР
     items.forEach(item => {
       const itemX = item.lane * LANE_WIDTH + LANE_WIDTH / 2;
-      
+
       ctx.save();
-      ctx.translate(itemX, item.y + ITEM_SIZE / 2); // Центр объекта
-      ctx.rotate(item.rotation); // Применяем вращение
-      
+      ctx.translate(itemX, item.y + ITEM_SIZE / 2);
+      ctx.rotate(item.rotation);
+
       const img = trashImages[item.imgIndex];
       if (img && img.complete) {
         ctx.drawImage(img, -ITEM_SIZE / 2, -ITEM_SIZE / 2, ITEM_SIZE, ITEM_SIZE);
       } else {
-        // Заглушка, если картинка не загрузилась
         ctx.fillStyle = '#888';
         ctx.beginPath(); ctx.arc(0, 0, ITEM_SIZE / 2, 0, Math.PI * 2); ctx.fill();
       }
@@ -283,7 +280,7 @@
     });
 
     const px = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
-    
+
     if (isDying) {
       if (deathImages[deathFrameIndex] && deathImages[deathFrameIndex].complete) {
         ctx.drawImage(deathImages[deathFrameIndex], canvas.width / 2 - PLAYER_WIDTH / 2, PLAYER_Y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT);
