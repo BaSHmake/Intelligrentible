@@ -56,7 +56,7 @@
 
   const ITEM_SIZE = 60;
 
-  // ===== ЗАГРУЗКА КАРТИНОК ГЕРОЯ =====
+  // ===== ЗАГРУЗКА ГЕРОЯ =====
   const heroBase = new Image(); heroBase.src = 'Проект (20261026122800).png'; 
   const heroIdle2 = new Image(); heroIdle2.src = 'Проект (20261027080835).png';
   const heroHappy = new Image(); heroHappy.src = 'Проект (20261026050007).png';
@@ -79,20 +79,25 @@
   heroHappy.onload = () => { happyLoaded = true; };
   heroHurt.onload = () => { hurtLoaded = true; };
 
-  // ===== ЗАГРУЗКА И НАСТРОЙКА МУСОРА =====
-  const trashData = [
+  // ===== ЗАГРУЗКА МУСОРА =====
+  // Хороший мусор
+  const goodTrashData = [
     { src: 'Проект (20261101124328).png', points: 6 },  // Банка
     { src: 'Проект (20261031090037).png', points: 8 },  // Шестеренка
     { src: 'Проект (20261102043440).png', points: 10 }, // Вентилятор
     { src: 'Проект (20261101063546).png', points: 12 }  // Радио
   ];
 
-  const trashImages = [];
-  trashData.forEach(data => {
-    const img = new Image(); 
-    img.src = data.src; 
-    trashImages.push(img);
-  });
+  // Плохой мусор (отнимает жизнь)
+  const badTrashData = [
+    { src: 'Проект (20261102045411).png' }, // Банка
+    { src: 'Проект (20261103051440).png' }, // Шестеренка
+    { src: 'Проект (20261102053620).png' }, // Вентилятор
+    { src: 'Проект (20261102053026).png' }  // Радио
+  ];
+
+  const goodImages = []; goodTrashData.forEach(d => { const i = new Image(); i.src = d.src; goodImages.push(i); });
+  const badImages = []; badTrashData.forEach(d => { const i = new Image(); i.src = d.src; badImages.push(i); });
 
   // ===== СОСТОЯНИЕ ИГРЫ =====
   let playerLane = 1;
@@ -154,14 +159,18 @@
     spawnInterval = setInterval(() => {
       if (!running || gameOver) return;
       const lane = Math.floor(Math.random() * LANES);
-      const randomTrashIndex = Math.floor(Math.random() * trashData.length);
       
+      // 20% шанс, что выпадет плохой мусор
+      const isBad = Math.random() < 0.20; 
+      const index = isBad ? Math.floor(Math.random() * badImages.length) : Math.floor(Math.random() * goodImages.length);
+
       items.push({ 
         lane: lane, 
         y: -ITEM_SIZE, 
         speed: 3.5, 
-        imgIndex: randomTrashIndex,
-        points: trashData[randomTrashIndex].points,
+        imgIndex: index,
+        isBad: isBad,
+        points: isBad ? 0 : goodTrashData[index].points,
         rotation: Math.random() * Math.PI * 2,
         rotSpeed: (Math.random() - 0.5) * 0.1
       });
@@ -223,27 +232,28 @@
       const itemX = item.lane * LANE_WIDTH + LANE_WIDTH / 2;
       const playerX = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
 
+      // Проверка ловли
       if (item.y + ITEM_SIZE >= PLAYER_Y - PLAYER_HEIGHT / 2 && item.y <= PLAYER_Y + PLAYER_HEIGHT / 2 &&
           Math.abs(itemX - playerX) < LANE_WIDTH * 0.4) {
         
-        score += item.points; 
-        updateHUD();
+        // Если поймали плохой мусор
+        if (item.isBad) {
+          lives--;
+          updateHUD();
+          happyTimer = 0;
+          hurtTimer = 30; // Долгий урон
+          shake = 20;
+          flash = 1;
+        } else {
+          // Если поймали хороший мусор
+          score += item.points; 
+          updateHUD();
+          happyTimer = 20; 
+          hurtTimer = 0; 
+        }
+
         items.splice(i, 1);
-        happyTimer = 20; 
-        hurtTimer = 0; 
-        continue;
-      }
-
-      if (item.y > canvas.height) {
-        lives--;
-        updateHUD();
-        items.splice(i, 1);
-
-        happyTimer = 0;
-        hurtTimer = 20; 
-        shake = 15;
-        flash = 0.8;
-
+        
         if (lives <= 0) {
           gameOver = true;
           isDying = true; 
@@ -251,6 +261,31 @@
           deathFrameTimer = 0;
           if (spawnInterval) clearInterval(spawnInterval);
           return;
+        }
+        continue;
+      }
+
+      // Если мусор упал мимо
+      if (item.y > canvas.height) {
+        items.splice(i, 1);
+        
+        // Пропуск ХОРОШЕГО мусора отнимает жизнь (как раньше)
+        if (!item.isBad) {
+          lives--;
+          updateHUD();
+          happyTimer = 0;
+          hurtTimer = 20; 
+          shake = 15;
+          flash = 0.8;
+
+          if (lives <= 0) {
+            gameOver = true;
+            isDying = true; 
+            deathFrameIndex = 0;
+            deathFrameTimer = 0;
+            if (spawnInterval) clearInterval(spawnInterval);
+            return;
+          }
         }
       }
     }
@@ -276,11 +311,12 @@
       ctx.translate(itemX, item.y + ITEM_SIZE / 2);
       ctx.rotate(item.rotation);
 
-      const img = trashImages[item.imgIndex];
+      const img = item.isBad ? badImages[item.imgIndex] : goodImages[item.imgIndex];
+      
       if (img && img.complete) {
         ctx.drawImage(img, -ITEM_SIZE / 2, -ITEM_SIZE / 2, ITEM_SIZE, ITEM_SIZE);
       } else {
-        ctx.fillStyle = '#888';
+        ctx.fillStyle = item.isBad ? '#f00' : '#888';
         ctx.beginPath(); ctx.arc(0, 0, ITEM_SIZE / 2, 0, Math.PI * 2); ctx.fill();
       }
       ctx.restore();
