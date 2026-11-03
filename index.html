@@ -55,6 +55,9 @@
   const PLAYER_Y = canvas.height - PLAYER_HEIGHT / 2 - 10; 
 
   const ITEM_SIZE = 60;
+  // Новые переменные для честного хитбокса
+  const HITBOX_WIDTH = LANE_WIDTH * 0.3; // Было 0.4
+  const HITBOX_HEIGHT = 40; // Высота зоны ловли
 
   // ===== ЗАГРУЗКА ГЕРОЯ =====
   const heroBase = new Image(); heroBase.src = 'Проект (20261026122800).png'; 
@@ -80,20 +83,18 @@
   heroHurt.onload = () => { hurtLoaded = true; };
 
   // ===== ЗАГРУЗКА МУСОРА =====
-  // Хороший мусор
   const goodTrashData = [
-    { src: 'Проект (20261101124328).png', points: 6 },  // Банка
-    { src: 'Проект (20261031090037).png', points: 8 },  // Шестеренка
-    { src: 'Проект (20261102043440).png', points: 10 }, // Вентилятор
-    { src: 'Проект (20261101063546).png', points: 12 }  // Радио
+    { src: 'Проект (20261101124328).png', points: 6 },  
+    { src: 'Проект (20261031090037).png', points: 8 },  
+    { src: 'Проект (20261102043440).png', points: 10 }, 
+    { src: 'Проект (20261101063546).png', points: 12 }  
   ];
 
-  // Плохой мусор (отнимает жизнь)
   const badTrashData = [
-    { src: 'Проект (20261102045411).png' }, // Банка
-    { src: 'Проект (20261103051440).png' }, // Шестеренка
-    { src: 'Проект (20261102053620).png' }, // Вентилятор
-    { src: 'Проект (20261102053026).png' }  // Радио
+    { src: 'Проект (20261102045411).png' }, 
+    { src: 'Проект (20261103051440).png' }, 
+    { src: 'Проект (20261102053620).png' }, 
+    { src: 'Проект (20261102053026).png' }  
   ];
 
   const goodImages = []; goodTrashData.forEach(d => { const i = new Image(); i.src = d.src; goodImages.push(i); });
@@ -159,8 +160,6 @@
     spawnInterval = setInterval(() => {
       if (!running || gameOver) return;
       const lane = Math.floor(Math.random() * LANES);
-      
-      // 20% шанс, что выпадет плохой мусор
       const isBad = Math.random() < 0.20; 
       const index = isBad ? Math.floor(Math.random() * badImages.length) : Math.floor(Math.random() * goodImages.length);
 
@@ -232,20 +231,20 @@
       const itemX = item.lane * LANE_WIDTH + LANE_WIDTH / 2;
       const playerX = playerLane * LANE_WIDTH + LANE_WIDTH / 2;
 
-      // Проверка ловли
-      if (item.y + ITEM_SIZE >= PLAYER_Y - PLAYER_HEIGHT / 2 && item.y <= PLAYER_Y + PLAYER_HEIGHT / 2 &&
-          Math.abs(itemX - playerX) < LANE_WIDTH * 0.4) {
+      // Проверка ловли с уменьшенным хитбоксом
+      const isCaughtX = Math.abs(itemX - playerX) < HITBOX_WIDTH;
+      const isCaughtY = (item.y + ITEM_SIZE / 2) > (PLAYER_Y - HITBOX_HEIGHT / 2) && (item.y + ITEM_SIZE / 2) < (PLAYER_Y + HITBOX_HEIGHT / 2);
+
+      if (isCaughtX && isCaughtY) {
         
-        // Если поймали плохой мусор
         if (item.isBad) {
           lives--;
           updateHUD();
           happyTimer = 0;
-          hurtTimer = 30; // Долгий урон
+          hurtTimer = 30;
           shake = 20;
           flash = 1;
         } else {
-          // Если поймали хороший мусор
           score += item.points; 
           updateHUD();
           happyTimer = 20; 
@@ -265,11 +264,9 @@
         continue;
       }
 
-      // Если мусор упал мимо
       if (item.y > canvas.height) {
         items.splice(i, 1);
         
-        // Пропуск ХОРОШЕГО мусора отнимает жизнь (как раньше)
         if (!item.isBad) {
           lives--;
           updateHUD();
